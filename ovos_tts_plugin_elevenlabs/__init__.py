@@ -65,19 +65,13 @@ class ElevenLabsTTSPlugin(TTS):
     def voice_id(self) -> str:
         """Get voice ID from config."""
         voice_id = self.config.get("voice_id")
-        # Log available voices to help troubleshoot
         try:
             voices = self.client.voices.get_all()
-            # ElevenLabs API returns list of tuples, extract just the IDs
-            available_voices = []
-            for voice in voices:
-                # Each voice is a tuple of (name, voice_id, ...)
-                voice_info = voice[0] if isinstance(voice, tuple) else voice
-                if hasattr(voice_info, "voice_id"):
-                    available_voices.append((voice_info.name, voice_info.voice_id))
-            LOG.debug(f"Available voices: {available_voices}")
+            voice_names_and_ids = [(v.name, v.voice_id) for v in voices]
+            LOG.debug(f"Available voices: {voice_names_and_ids}")
         except Exception as e:
             LOG.warning(f"Could not fetch available voices: {str(e)}")
+            voice_names_and_ids = []
 
         # If no voice_id configured, use default
         if not voice_id:
@@ -125,24 +119,6 @@ class ElevenLabsTTSPlugin(TTS):
             LOG.debug(f"Using streaming: {self.use_streaming}")
             LOG.debug(f"Using voice_id: {self.voice_id}")
 
-            # Validate voice ID before making API call
-            try:
-                voices = self.client.voices.get_all()
-                # Extract voice IDs from the API response
-                available_voice_ids = []
-                for voice in voices:
-                    # Each voice is a tuple of (name, voice_id, ...)
-                    voice_info = voice[0] if isinstance(voice, tuple) else voice
-                    if hasattr(voice_info, "voice_id"):
-                        available_voice_ids.append(voice_info.voice_id)
-
-                LOG.debug(f"Available voice IDs: {available_voice_ids}")
-                if self.voice_id not in available_voice_ids:
-                    raise ValueError(f"Voice ID {self.voice_id} not found in available voices")
-            except Exception as e:
-                LOG.error(f"Voice validation failed: {str(e)}")
-                raise
-
             if self.use_streaming:
                 # Streaming approach
                 LOG.debug("Using streaming API")
@@ -164,7 +140,7 @@ class ElevenLabsTTSPlugin(TTS):
                     voice_settings=VoiceSettings(**self.voice_settings)
                 )
 
-            # Write stream to file - both approaches use the same write logic now
+            # Write stream to file - both approaches use the same write logic
             LOG.debug("Writing audio stream to file")
             bytes_written = 0
             with open(out_path, "wb") as f:
@@ -209,10 +185,16 @@ class ElevenLabsTTSValidator(TTSValidator):
     def validate_voice(self):
         """Validate the configured voice exists."""
         try:
+            LOG.debug("Fetching voices from ElevenLabs API...")
             voices = self.tts.client.voices.get_all()
+
+            # Extract all voice IDs from the response
             voice_ids = [v.voice_id for v in voices]
             LOG.debug(f"Available voice IDs: {voice_ids}")
             LOG.debug(f"Configured voice ID: {self.tts.voice_id}")
+
+            if not voice_ids:
+                raise Exception("No voices available from API - check API key permissions")
 
             if self.tts.voice_id not in voice_ids:
                 raise Exception(
