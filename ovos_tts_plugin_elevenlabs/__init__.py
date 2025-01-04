@@ -108,9 +108,13 @@ class ElevenLabsTTSPlugin(TTS):
         try:
             # Ensure output path has .mp3 extension
             out_path = wav_file.replace(".wav", ".mp3")
+            LOG.debug(f"Converting text to speech: {sentence[:20]}...")
+            LOG.debug(f"Output path: {out_path}")
+            LOG.debug(f"Using streaming: {self.use_streaming}")
 
             if self.use_streaming:
                 # Streaming approach
+                LOG.debug("Using streaming API")
                 audio_stream = self.client.text_to_speech.convert_as_stream(
                     text=sentence,
                     voice_id=self.voice_id,
@@ -118,16 +122,10 @@ class ElevenLabsTTSPlugin(TTS):
                     output_format=self.output_format,
                     voice_settings=VoiceSettings(**self.voice_settings)
                 )
-
-                # Write stream to file
-                with open(out_path, "wb") as f:
-                    for chunk in audio_stream:
-                        if chunk:
-                            f.write(chunk)
-
             else:
-                # File-based approach
-                audio = self.client.text_to_speech.convert(
+                # Non-streaming approach still returns a generator
+                LOG.debug("Using non-streaming API")
+                audio_stream = self.client.text_to_speech.convert(
                     text=sentence,
                     voice_id=self.voice_id,
                     model_id=self.model_id,
@@ -135,9 +133,15 @@ class ElevenLabsTTSPlugin(TTS):
                     voice_settings=VoiceSettings(**self.voice_settings)
                 )
 
-                # Write audio to file
-                with open(out_path, "wb") as f:
-                    f.write(audio)
+            # Write stream to file - both approaches use the same write logic now
+            LOG.debug("Writing audio stream to file")
+            bytes_written = 0
+            with open(out_path, "wb") as f:
+                for chunk in audio_stream:
+                    if chunk:
+                        f.write(chunk)
+                        bytes_written += len(chunk)
+            LOG.debug(f"Successfully wrote {bytes_written} bytes to {out_path}")
 
             return out_path, None
 
