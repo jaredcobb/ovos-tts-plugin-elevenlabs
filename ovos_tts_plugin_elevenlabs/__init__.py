@@ -68,7 +68,14 @@ class ElevenLabsTTSPlugin(TTS):
         # Log available voices to help troubleshoot
         try:
             voices = self.client.voices.get_all()
-            LOG.debug(f"Available voices: {[(v.name, v.voice_id) for v in voices]}")
+            # ElevenLabs API returns list of tuples, extract just the IDs
+            available_voices = []
+            for voice in voices:
+                # Each voice is a tuple of (name, voice_id, ...)
+                voice_info = voice[0] if isinstance(voice, tuple) else voice
+                if hasattr(voice_info, "voice_id"):
+                    available_voices.append((voice_info.name, voice_info.voice_id))
+            LOG.debug(f"Available voices: {available_voices}")
         except Exception as e:
             LOG.warning(f"Could not fetch available voices: {str(e)}")
 
@@ -108,17 +115,8 @@ class ElevenLabsTTSPlugin(TTS):
         }
 
     def get_tts(self, sentence: str, wav_file: str,
-                lang: Optional[str] = None) -> Tuple[str, Optional[str]]:
-        """Convert text to speech using ElevenLabs API.
-
-        Args:
-            sentence: Text to convert to speech
-            wav_file: Path to save audio file (will have .mp3 extension)
-            lang: Language of text (optional)
-
-        Returns:
-            Tuple of (wav_file, None)
-        """
+            lang: Optional[str] = None) -> Tuple[str, Optional[str]]:
+        """Convert text to speech using ElevenLabs API."""
         try:
             # Ensure output path has .mp3 extension
             out_path = wav_file.replace(".wav", ".mp3")
@@ -130,7 +128,16 @@ class ElevenLabsTTSPlugin(TTS):
             # Validate voice ID before making API call
             try:
                 voices = self.client.voices.get_all()
-                if self.voice_id not in [v.voice_id for v in voices]:
+                # Extract voice IDs from the API response
+                available_voice_ids = []
+                for voice in voices:
+                    # Each voice is a tuple of (name, voice_id, ...)
+                    voice_info = voice[0] if isinstance(voice, tuple) else voice
+                    if hasattr(voice_info, "voice_id"):
+                        available_voice_ids.append(voice_info.voice_id)
+
+                LOG.debug(f"Available voice IDs: {available_voice_ids}")
+                if self.voice_id not in available_voice_ids:
                     raise ValueError(f"Voice ID {self.voice_id} not found in available voices")
             except Exception as e:
                 LOG.error(f"Voice validation failed: {str(e)}")
