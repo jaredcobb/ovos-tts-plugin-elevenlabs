@@ -32,10 +32,26 @@ class TTSConfiguration:
 
 class ElevenLabsTTSPlugin(TTS):
     """TTS plugin for ElevenLabs."""
+
+    # Define available_languages as a class variable instead of a property
+    available_languages = {
+        "en", "es", "fr", "de", "it", "pt", "pl", "hi",
+        "ar", "bn", "cs", "da", "nl", "fi", "el", "hu",
+        "id", "ja", "ko", "ms", "no", "ro", "ru", "sk",
+        "sv", "ta", "tr", "uk", "ur", "vi", "zh", "bg"
+    }
+
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, audio_ext="mp3",
-                        validator=ElevenLabsTTSValidator(self))
-        self.client = ElevenLabs(api_key=self.api_key)
+        LOG.debug("Initializing ElevenLabsTTS")
+        try:
+            super().__init__(*args, **kwargs, audio_ext="mp3",
+                            validator=ElevenLabsTTSValidator(self))
+            LOG.debug("Super init complete")
+            self.client = ElevenLabs(api_key=self.api_key)
+            LOG.debug("Client initialized")
+        except Exception as e:
+            LOG.error(f"Failed to initialize ElevenLabsTTS: {str(e)}")
+            raise
 
     @property
     def api_key(self) -> str:
@@ -129,16 +145,6 @@ class ElevenLabsTTSPlugin(TTS):
             LOG.error(f"ElevenLabs TTS error: {str(e)}")
             raise
 
-    @property
-    def available_languages(self) -> set:
-        """Return the set of supported languages."""
-        return {
-            "en", "es", "fr", "de", "it", "pt", "pl", "hi",
-            "ar", "bn", "cs", "da", "nl", "fi", "el", "hu",
-            "id", "ja", "ko", "ms", "no", "ro", "ru", "sk",
-            "sv", "ta", "tr", "uk", "ur", "vi", "zh", "bg"
-        }
-
 
 class ElevenLabsTTSValidator(TTSValidator):
     """Validator for ElevenLabs TTS plugin."""
@@ -190,7 +196,7 @@ class ElevenLabsTTSValidator(TTSValidator):
 
 
 # Sample valid configurations per language
-ElevenLabsTTSConfig: Dict[str, List[Dict[str, Any]]] = {
+ElevenLabsTTSConfig = {
     # Generate for all supported languages
     lang: [{
         "lang": lang,
