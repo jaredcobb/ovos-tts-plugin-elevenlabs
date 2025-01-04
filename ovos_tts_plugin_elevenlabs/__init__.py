@@ -184,7 +184,10 @@ class ElevenLabsTTSValidator(TTSValidator):
 
     def validate_lang(self):
         """Validate language is supported."""
-        if self.tts.lang not in self.tts.available_languages:
+        # Extract primary language code before hyphen
+        # e.g., "en-US" -> "en"
+        primary_lang = self.tts.lang.split('-')[0].lower()
+        if primary_lang not in self.tts.available_languages:
             raise ValueError(
                 f"Language {self.tts.lang} not supported. "
                 f"Supported languages: {self.tts.available_languages}"
