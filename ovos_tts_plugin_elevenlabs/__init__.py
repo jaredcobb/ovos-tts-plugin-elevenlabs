@@ -64,7 +64,21 @@ class ElevenLabsTTSPlugin(TTS):
     @property
     def voice_id(self) -> str:
         """Get voice ID from config."""
-        return self.config.get("voice_id", TTSConfiguration.DEFAULT_VOICE_ID)
+        voice_id = self.config.get("voice_id")
+        # Log available voices to help troubleshoot
+        try:
+            voices = self.client.voices.get_all()
+            LOG.debug(f"Available voices: {[(v.name, v.voice_id) for v in voices]}")
+        except Exception as e:
+            LOG.warning(f"Could not fetch available voices: {str(e)}")
+
+        # If no voice_id configured, use default
+        if not voice_id:
+            LOG.debug(f"No voice_id configured, using default: {TTSConfiguration.DEFAULT_VOICE_ID}")
+            return TTSConfiguration.DEFAULT_VOICE_ID
+
+        LOG.debug(f"Using configured voice_id: {voice_id}")
+        return voice_id
 
     @property
     def model_id(self) -> str:
@@ -111,6 +125,16 @@ class ElevenLabsTTSPlugin(TTS):
             LOG.debug(f"Converting text to speech: {sentence[:20]}...")
             LOG.debug(f"Output path: {out_path}")
             LOG.debug(f"Using streaming: {self.use_streaming}")
+            LOG.debug(f"Using voice_id: {self.voice_id}")
+
+            # Validate voice ID before making API call
+            try:
+                voices = self.client.voices.get_all()
+                if self.voice_id not in [v.voice_id for v in voices]:
+                    raise ValueError(f"Voice ID {self.voice_id} not found in available voices")
+            except Exception as e:
+                LOG.error(f"Voice validation failed: {str(e)}")
+                raise
 
             if self.use_streaming:
                 # Streaming approach
@@ -180,8 +204,13 @@ class ElevenLabsTTSValidator(TTSValidator):
         try:
             voices = self.tts.client.voices.get_all()
             voice_ids = [v.voice_id for v in voices]
+            LOG.debug(f"Available voice IDs: {voice_ids}")
+            LOG.debug(f"Configured voice ID: {self.tts.voice_id}")
+
             if self.tts.voice_id not in voice_ids:
-                raise Exception(f"Voice ID {self.tts.voice_id} not found")
+                raise Exception(
+                    f"Voice ID '{self.tts.voice_id}' not found in available voices: {voice_ids}"
+                )
         except Exception as e:
             LOG.error(f"Error validating voice: {str(e)}")
             raise
