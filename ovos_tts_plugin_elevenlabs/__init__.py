@@ -65,18 +65,11 @@ class ElevenLabsTTSPlugin(TTS):
     def voice_id(self) -> str:
         """Get voice ID from config."""
         voice_id = self.config.get("voice_id")
-        try:
-            voices = self.client.voices.get_all()
-            voice_names_and_ids = [(v.name, v.voice_id) for v in voices]
-            LOG.debug(f"Available voices: {voice_names_and_ids}")
-        except Exception as e:
-            LOG.warning(f"Could not fetch available voices: {str(e)}")
-            voice_names_and_ids = []
 
         # If no voice_id configured, use default
         if not voice_id:
             LOG.debug(f"No voice_id configured, using default: {TTSConfiguration.DEFAULT_VOICE_ID}")
-            return TTSConfiguration.DEFAULT_VOICE_ID
+            voice_id = TTSConfiguration.DEFAULT_VOICE_ID
 
         LOG.debug(f"Using configured voice_id: {voice_id}")
         return voice_id
