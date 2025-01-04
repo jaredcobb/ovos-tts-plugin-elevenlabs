@@ -43,15 +43,12 @@ class ElevenLabsTTSPlugin(TTS):
 
     def __init__(self, *args, **kwargs):
         LOG.debug("Initializing ElevenLabsTTS")
-        try:
-            super().__init__(*args, **kwargs, audio_ext="mp3",
-                            validator=ElevenLabsTTSValidator(self))
-            LOG.debug("Super init complete")
-            self.client = ElevenLabs(api_key=self.api_key)
-            LOG.debug("Client initialized")
-        except Exception as e:
-            LOG.error(f"Failed to initialize ElevenLabsTTS: {str(e)}")
-            raise
+        # Let validation exceptions propagate up
+        super().__init__(*args, **kwargs, audio_ext="mp3",
+                        validator=ElevenLabsTTSValidator(self))
+        LOG.debug("Super init complete")
+        self.client = ElevenLabs(api_key=self.api_key)
+        LOG.debug("Client initialized")
 
     @property
     def api_key(self) -> str:
@@ -177,25 +174,21 @@ class ElevenLabsTTSValidator(TTSValidator):
 
     def validate_voice(self):
         """Validate the configured voice exists."""
-        try:
-            LOG.debug("Fetching voices from ElevenLabs API...")
-            voices = self.tts.client.voices.get_all()
+        LOG.debug("Fetching voices from ElevenLabs API...")
+        voices = self.tts.client.voices.get_all()
 
-            # Extract all voice IDs from the response
-            voice_ids = [v.voice_id for v in voices]
-            LOG.debug(f"Available voice IDs: {voice_ids}")
-            LOG.debug(f"Configured voice ID: {self.tts.voice_id}")
+        # Extract all voice IDs from the response
+        voice_ids = [v.voice_id for v in voices]
+        LOG.debug(f"Available voice IDs: {voice_ids}")
+        LOG.debug(f"Configured voice ID: {self.tts.voice_id}")
 
-            if not voice_ids:
-                raise Exception("No voices available from API - check API key permissions")
+        if not voice_ids:
+            raise ValueError("No voices available from API - check API key permissions")
 
-            if self.tts.voice_id not in voice_ids:
-                raise Exception(
-                    f"Voice ID '{self.tts.voice_id}' not found in available voices: {voice_ids}"
-                )
-        except Exception as e:
-            LOG.error(f"Error validating voice: {str(e)}")
-            raise
+        if self.tts.voice_id not in voice_ids:
+            raise ValueError(
+                f"Voice ID '{self.tts.voice_id}' not found in available voices: {voice_ids}"
+            )
 
     def validate_lang(self):
         """Validate language is supported."""
