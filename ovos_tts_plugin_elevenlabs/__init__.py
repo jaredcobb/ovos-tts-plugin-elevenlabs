@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from elevenlabs import VoiceSettings, generate, stream
+from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
 from ovos_plugin_manager.templates.tts import TTS, TTSValidator
 from ovos_utils.log import LOG
